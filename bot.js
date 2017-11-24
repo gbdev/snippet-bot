@@ -9,8 +9,8 @@ const client = new Discord.Client();
 const domains = ["pastebin.com"];
 
 // filenames
-const codeLogFilename = "code.txt"	// where to store collected code blocks
-const pasteLogFilename = "urls.txt"	// where to store pastebin/etc links
+const codeLogFilename = "code.log"	// where to store collected code blocks
+const pasteLogFilename = "urls.log"	// where to store pastebin/etc links
 
 // store away collected code blocks
 // poster = discord user tag
@@ -18,7 +18,7 @@ const pasteLogFilename = "urls.txt"	// where to store pastebin/etc links
 function storeBlocks(poster, blocks)
 {
 	// format the log entries
-	const data = blocks.map((block) => `${poster}\t${tabNewlines(block)}`).join("\n");
+	const data = blocks.map(block => `${poster}\t${tabNewlines(block)}`).join("\n");
 	appendFile(codeLogFilename, data);	// and store them
 }
 
@@ -28,14 +28,14 @@ function storeBlocks(poster, blocks)
 function storeLinks(poster, links)
 {
 	// format the log entries
-	const data = links.map((link) => `${poster}\t${link}`).join("\n");
+	const data = links.map(link => `${poster}\t${link}`).join("\n");
 	appendFile(pasteLogFilename, data);	// and store them
 }
 
 // just append data to file called filename
 function appendFile(filename, data)
 {
-	fs.appendFile(filename, `${data}\n`, (e) => { if(e) throw e });
+	fs.appendFile(filename, `${data}\n`, (e) => { if(e) throw e; });
 }
 
 // tab over newlines
@@ -64,11 +64,11 @@ function getCodeBlocks(string)
 	// how to make it only collect whats in ( and ) ?
 	// so we don't have to explicitely chop off the code block delimiters?
 	const regex = /\`\`\`([a-z]*[\s\S]*?)\`\`\`/g;
-	return (string.match(regex) || []).map((s) => s.slice(3, -3));
+	return (string.match(regex) || []).map(s => s.slice(3, -3));
 }
 
 // return an array of links of some domain in a string
-function matchDomain(string, domain)
+function matchUrlWithDomain(string, domain)
 {
 	// copied this regex from stack overflow
 	const regex = new RegExp("(https?:\\/\\/(.+?\\.)?" + domain + "(\\/[A-Za-z0-9\\-\\._~:\\/\\?#\\[\\]@!$&'\(\)\*\+,;\=]*)?)", "g");
@@ -79,7 +79,7 @@ function matchDomain(string, domain)
 function getLinks(string)
 {
 	// match urls of all the domains in the `domains` array
-	return [].concat.apply([], domains.map((domain) => matchDomain(string, domain)));
+	return [].concat.apply([], domains.map((domain) => matchUrlWithDomain(string, domain)));
 }
 
 // when the bot logs in successfully
