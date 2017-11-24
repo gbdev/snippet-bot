@@ -114,6 +114,7 @@ function scanHistory()
 {
 	// here go through all the messages in the server
 	// and pass them to processMessage (the function right below)
+	console.log("Preparing to scan chat history...");
 }
 
 // process a discord message
@@ -152,9 +153,18 @@ function main()
 	const args = process.argv.slice(2);
 	var token = null;
 	args.forEach((arg, i) => {
-		if(arg === "--history") flags.history = true;
-		else if (i == args.length - 1) token = arg;
-		else exit(`Unknown argument: ${arg}`);
+		// if its a flag in the flags object
+		if(arg.startsWith("--"))
+		{
+			// check if its a known flag (in flags object)
+			// set it if so
+			// otherwise fail
+			const flag = arg.slice(2);	// the flag name
+			if(Object.keys(flags).includes(flag)) flags[flag] = true;
+			else exit(`Unknown argument: ${arg}`);
+		}
+		// otherwise expect the token
+		else token = arg;
 	});
 
 	// login with supplied token
