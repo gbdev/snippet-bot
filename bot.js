@@ -12,6 +12,11 @@ const domains = ["pastebin.com"];
 const codeLogFilename = "code.log"	// where to store collected code blocks
 const pasteLogFilename = "urls.log"	// where to store pastebin/etc links
 
+// cli flags
+const flags = {
+	history: false,		// scan chat history on login
+};
+
 // get universal time stamp
 function universalTime()
 {
@@ -104,30 +109,56 @@ function getLinks(string)
 	return [].concat.apply([], domains.map((domain) => matchUrlWithDomain(string, domain)));
 }
 
-// when the bot logs in successfully
-client.on("ready", () => {
-	console.log(`Logged in as ${client.user.tag}!`);
-});
+// scan chat history and process all past messages
+function scanHistory()
+{
+	// here go through all the messages in the server
+	// and pass them to processMessage (the function right below)
+}
 
-// when a discord message is received
-client.on("message", message => {
-	logMessage(message);				// log the message to console
+// process a discord message
+function processMessage(message)
+{
 	const blocks = getCodeBlocks(message.content);	// get code blocks in message
 	const links = getLinks(message.content);	// collect pastebin/etc links
 	// store away the collected blocks and links (with person who posted them)
 	if(blocks.length) storeBlocks(message.author.tag, blocks);
 	if(links.length) storeLinks(message.author.tag, links);
+}
+
+// when the bot logs in successfully
+client.on("ready", () => {
+	console.log(`Logged in as ${client.user.tag}!`);
+	scanHistory();		// if --history flag given then scan history on connect
 });
+
+// when a discord message is received
+client.on("message", message => {
+	logMessage(message);		// log the message to console
+	processMessage(message);	// and process it normally
+});
+
+// exit with error message
+function exit(message)
+{
+	console.error(message);
+	process.exit(1);
+}
 
 // start bot with token from command line
 function main()
 {
-	// grab the login token from the command line args
-	if(process.argv.length >= 3)
-	{
-		const token = process.argv[2];
-		client.login(token);
-	}
+	// scan the command line args for flags and token
+	const args = process.argv.slice(2);
+	var token = null;
+	args.forEach((arg, i) => {
+		if(arg === "--history") flags.history = true;
+		else if (i == args.length - 1) token = arg;
+		else exit(`Unknown argument: ${arg}`);
+	});
+
+	// login with supplied token
+	if(token) client.login(token);
 	else console.error("Please supply the login token!");
 }
 
