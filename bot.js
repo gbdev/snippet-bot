@@ -14,11 +14,27 @@ const pasteLogFilename = "urls.log"	// where to store pastebin/etc links
 
 // store away collected code blocks
 // poster = discord user tag
-// blocks = array of code blocks
-function storeBlocks(poster, blocks)
+// blockStrings = array of code block strings
+function storeBlocks(poster, blockStrings)
 {
+	// create block objects from the block strings
+	// block.code = code string
+	// block.lang = language string, if present (otherwise null)
+	const blocks = blockStrings.map(string => {
+		// check if theres a language string
+		// do this in regex instead? instead of uglily hacking up strings manually haha
+		// if at least 3 lines (or 2nd line isnt empty), and first line is one word
+		// then the lang string is the first line
+		if((string.split("\n").length >= 3 ||
+		   (string.indexOf("\n") != -1 && string.split("\n")[1] != "")) &&
+		   string.split("\n")[0].split(" ").length == 1)
+			return { code: string.split("\n").slice(1).join("\n"),
+				 lang: string.split("\n")[0] };
+		else return { code: string, lang: null };
+	});
+
 	// format the log entries
-	const data = blocks.map(block => `${poster}\t${tabNewlines(block)}`).join("\n");
+	const data = blocks.map(block => `${poster}\t${block.lang}\t${tabNewlines(block.code)}`).join("\n");
 	appendFile(codeLogFilename, data);	// and store them
 }
 
