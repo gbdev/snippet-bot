@@ -12,6 +12,12 @@ const domains = ["pastebin.com"];
 const codeLogFilename = "code.log"	// where to store collected code blocks
 const pasteLogFilename = "urls.log"	// where to store pastebin/etc links
 
+// get universal time stamp
+function universalTime()
+{
+	return new Date().getTime();
+}
+
 // store away collected code blocks
 // poster = discord user tag
 // blockStrings = array of code block strings
@@ -34,7 +40,7 @@ function storeBlocks(poster, blockStrings)
 	});
 
 	// format the log entries
-	const data = blocks.map(block => `${poster}\t${block.lang}\t${tabNewlines(block.code)}`).join("\n");
+	const data = blocks.map(block => `${universalTime()}\t${poster}\t${block.lang}\t${tabNewlines(block.code)}`).join("\n");
 	appendFile(codeLogFilename, data);	// and store them
 }
 
@@ -44,7 +50,7 @@ function storeBlocks(poster, blockStrings)
 function storeLinks(poster, links)
 {
 	// format the log entries
-	const data = links.map(link => `${poster}\t${link}`).join("\n");
+	const data = links.map(link => `${universalTime()}\t${poster}\t${link}`).join("\n");
 	appendFile(pasteLogFilename, data);	// and store them
 }
 
