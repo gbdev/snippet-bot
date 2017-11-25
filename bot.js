@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+// TODO:
+// use regex to find lang strings in code blocks (in function `storeBlocks`)
+// how to handle when code blocks are edited?
+
 // load discord.js and make a new client object
 const fs = require("fs");
 const Discord = require("discord.js");
@@ -9,24 +13,18 @@ const client = new Discord.Client();
 const domains = ["pastebin.com"];
 
 // filenames
-const codeLogFilename = "code.log"	// where to store collected code blocks
-const pasteLogFilename = "urls.log"	// where to store pastebin/etc links
+const codeLogFilename = "code.log";	// where to store collected code blocks
+const pasteLogFilename = "urls.log";	// where to store pastebin/etc links
 
 // cli flags
 const flags = {
 	history: false,		// scan chat history on login
 };
 
-// get universal time stamp
-function universalTime()
-{
-	return new Date().getTime();
-}
-
 // store away collected code blocks
-// poster = discord user tag
+// message = source discord message object
 // blockStrings = array of code block strings
-function storeBlocks(poster, blockStrings)
+function storeBlocks(message, blockStrings)
 {
 	// create block objects from the block strings
 	// block.code = code string
@@ -45,17 +43,17 @@ function storeBlocks(poster, blockStrings)
 	});
 
 	// format the log entries
-	const data = blocks.map(block => `${universalTime()}\t${poster}\t${block.lang}\t${tabNewlines(block.code)}`).join("\n");
+	const data = blocks.map(block => `${message.createdAt.getTime()}\t${message.author.tag}\t${block.lang}\t${tabNewlines(block.code)}`).join("\n");
 	appendFile(codeLogFilename, data);	// and store them
 }
 
 // store away pastebin/etc urls
-// poster = discord user tag
+// message = source discord message object
 // links = array of links
-function storeLinks(poster, links)
+function storeLinks(message, links)
 {
 	// format the log entries
-	const data = links.map(link => `${universalTime()}\t${poster}\t${link}`).join("\n");
+	const data = links.map(link => `${message.createdAt.getTime()}\t${message.author.tag}\t${link}`).join("\n");
 	appendFile(pasteLogFilename, data);	// and store them
 }
 
@@ -106,7 +104,7 @@ function matchUrlWithDomain(string, domain)
 function getLinks(string)
 {
 	// match urls of all the domains in the `domains` array
-	return [].concat.apply([], domains.map((domain) => matchUrlWithDomain(string, domain)));
+	return [].concat.apply([], domains.map(domain => matchUrlWithDomain(string, domain)));
 }
 
 // scan chat history and process all past messages
@@ -115,6 +113,29 @@ function scanHistory()
 	// here go through all the messages in the server
 	// and pass them to processMessage (the function right below)
 	console.log("Preparing to scan chat history...");
+
+	// for every text channel of every guild the bot is in...
+	client.guilds.forEach(guild => guild.channels
+		.filter(channel => channel.type === "text").forEach(scanChannel));
+}
+
+// scan a text channel's history and process all messages
+function scanChannel(channel)
+{
+	// i wonder how we should handle edits?
+	// fetch messages recursively and then process them
+	const limit = 100;	// how many to fetch at one time
+	function fetch(before)
+	{
+		channel.fetchMessages({ limit: limit, before: before }).then(messages => {
+			messages.forEach(processMessage);	// process each message normally
+			// if there's still more to go, then fetch more and recurse!
+			if(messages.size == limit) fetch(messages.last().id);
+			else console.log(`Finished scanning channel #${channel.name}!`);
+		}).catch(console.error);
+	};
+	console.log(`Scanning channel #${channel.name}...`);
+	fetch();
 }
 
 // process a discord message
@@ -123,8 +144,8 @@ function processMessage(message)
 	const blocks = getCodeBlocks(message.content);	// get code blocks in message
 	const links = getLinks(message.content);	// collect pastebin/etc links
 	// store away the collected blocks and links (with person who posted them)
-	if(blocks.length) storeBlocks(message.author.tag, blocks);
-	if(links.length) storeLinks(message.author.tag, links);
+	if(blocks.length) storeBlocks(message, blocks);
+	if(links.length) storeLinks(message, links);
 }
 
 // when the bot logs in successfully
