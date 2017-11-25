@@ -1,0 +1,23 @@
+{
+  "name": "snippet-bot",
+  "version": "0.0.1",
+  "description": "A discord bot archiving code blocks and links to pastebin-like snippets.",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dmg01/snippet-bot.git"
+  },
+  "author": "dmg-01 contributors",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/dmg01/snippet-bot/issues"
+  },
+  "homepage": "https://github.com/dmg01/snippet-bot#readme",
+  "devDependencies": {
+    "discord.js": "^11.2.1"
+  }
+}

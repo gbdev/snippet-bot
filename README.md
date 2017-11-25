@@ -1,12 +1,12 @@
 # snippet-bot
 A discord bot archiving code blocks and links to pastebin-like snippets
 
-## Dependencies
-Command line dependencies: Node.js (`node`)
+## Deploy
 
-Node.js dependencies: discord.js (`npm install --save discord.js`)
+Clone the repository with `git clone https://github.com/dmg01/snippet-bot`.
 
-## Run
-To run the bot, do this: `./bot.js [token]`
+Install dependencies with `npm install`. You may see `UNMET PEER DEP` errors or warnings, ignore them.
 
-To archive the chat history on login, do this: `./bot.js --history [token]`
+Edit the configuration file `config.js` and add your token.
+
+Run the bot with `npm start`.

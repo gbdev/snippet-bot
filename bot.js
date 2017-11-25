@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 // TODO:
 // use regex to find lang strings in code blocks (in function `storeBlocks`)
 
