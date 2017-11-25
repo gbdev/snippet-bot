@@ -2,7 +2,6 @@
 
 // TODO:
 // use regex to find lang strings in code blocks (in function `storeBlocks`)
-// how to handle when code blocks are edited?
 
 // load discord.js and make a new client object
 const fs = require("fs");
