@@ -21,6 +21,14 @@ const flags = {
 	history: false,		// scan chat history on login
 };
 
+// get the latest timestamp for a message object
+// that is, edited timestamp if its been edited
+// else just the created timestamp
+function getLatestTimestamp(message)
+{
+	return message.editedTimestamp || message.createdTimestamp;
+}
+
 // store away collected code blocks
 // message = source discord message object
 // blockStrings = array of code block strings
@@ -43,7 +51,7 @@ function storeBlocks(message, blockStrings)
 	});
 
 	// format the log entries
-	const data = blocks.map(block => `${message.createdAt.getTime()}\t${message.author.tag}\t${block.lang}\t${tabNewlines(block.code)}`).join("\n");
+	const data = blocks.map(block => `${getLatestTimestamp(message)}\t${message.id}\t${message.author.tag}\t${block.lang}\t${tabNewlines(block.code)}`).join("\n");
 	appendFile(codeLogFilename, data);	// and store them
 }
 
@@ -53,7 +61,7 @@ function storeBlocks(message, blockStrings)
 function storeLinks(message, links)
 {
 	// format the log entries
-	const data = links.map(link => `${message.createdAt.getTime()}\t${message.author.tag}\t${link}`).join("\n");
+	const data = links.map(link => `${getLatestTimestamp(message)}\t${message.id}\t${message.author.tag}\t${link}`).join("\n");
 	appendFile(pasteLogFilename, data);	// and store them
 }
 
@@ -72,15 +80,18 @@ function tabNewlines(string)
 }
 
 // pretty print a received discord message to console
-function logMessage(message)
+function logMessage(message, edit)
 {
 	// +tab newlines for readability
 	const loggedMsg = tabNewlines(message.content);
 
+	// string indicated this was an edit
+	const e = edit ? "(edit) " : "";
+
 	// if direct message (no guild)
-	if(!message.guild) console.log(`${message.author.tag}> ${loggedMsg}`);
+	if(!message.guild) console.log(`${e}${message.author.tag}> ${loggedMsg}`);
 	// if message from guild
-	else console.log(`${message.guild.name}> #${message.channel.name}> ${message.author.tag}> ${loggedMsg}`);
+	else console.log(`${e}${message.guild.name}> #${message.channel.name}> ${message.author.tag}> ${loggedMsg}`);
 }
 
 // return an array of all the code blocks contained in a string
@@ -151,13 +162,20 @@ function processMessage(message)
 // when the bot logs in successfully
 client.on("ready", () => {
 	console.log(`Logged in as ${client.user.tag}!`);
-	scanHistory();		// if --history flag given then scan history on connect
+	// if --history flag given then scan history on connect
+	if(flags.history) scanHistory();
 });
 
 // when a discord message is received
 client.on("message", message => {
 	logMessage(message);		// log the message to console
 	processMessage(message);	// and process it normally
+});
+
+// when a discord message is edited
+client.on("messageUpdate", (oldMessage, newMessage) => {
+	logMessage(newMessage, true);	// log the message to console
+	processMessage(newMessage);	// and process it normally
 });
 
 // exit with error message
