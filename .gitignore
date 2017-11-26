@@ -59,3 +59,6 @@ typings/
 
 # .swp files
 *.swp
+
+# Config file
+config.js
