@@ -61,7 +61,7 @@ typings/
 *.swp
 
 # Config file
-config.js
+#config.js
 
 # Database files
 *.db
