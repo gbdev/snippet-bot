@@ -34,8 +34,8 @@ function prepareDatabase()
 	// assert the snippets and links tables
 	// (snippets table for code snippets)
 	// (links table for collected pastebin/etc urls)
-	assertTable("snippets", [id, timestamp, author, lang, code]);
-	assertTable("links", [id, timestamp, author, url]);
+	assertTable("snippets", ["id", "timestamp", "author", "lang", "code"]);
+	assertTable("links", ["id", "timestamp", "author", "url"]);
 };
 
 // close the database if its open
