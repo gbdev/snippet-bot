@@ -7,7 +7,8 @@ Clone the repository with `git clone https://github.com/dmg01/snippet-bot`.
 
 Install dependencies with `npm install`. You may see `UNMET PEER DEP` errors or warnings, ignore them.
 
-Create the configuration file `config.js` and add your token as follows: ```
+Create the configuration file `config.js` and add your token as follows:
+```javascript
 const config = {};
 module.exports = config;
 
