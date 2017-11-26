@@ -6,17 +6,15 @@ const fs = require("fs");
 const Discord = require("discord.js");
 const client = new Discord.Client();
 
+// load config file
+const config = require("./config");
+
 // pastebin/etc domains
 const domains = ["pastebin.com"];
 
 // filenames
 const codeLogFilename = "code.log";	// where to store collected code blocks
 const pasteLogFilename = "urls.log";	// where to store pastebin/etc links
-
-// cli flags
-const flags = {
-	history: false,		// scan chat history on login
-};
 
 // get the latest timestamp for a message object
 // that is, edited timestamp if its been edited
@@ -159,8 +157,8 @@ function processMessage(message)
 // when the bot logs in successfully
 client.on("ready", () => {
 	console.log(`Logged in as ${client.user.tag}!`);
-	// if --history flag given then scan history on connect
-	if(flags.history) scanHistory();
+	// if configured to archive chat history on login...
+	if(config.history) scanHistory();
 });
 
 // when a discord message is received
@@ -182,30 +180,14 @@ function exit(message)
 	process.exit(1);
 }
 
-// start bot with token from command line
+// start bot with token from config file
 function main()
 {
-	// scan the command line args for flags and token
-	const args = process.argv.slice(2);
-	var token = null;
-	args.forEach((arg, i) => {
-		// if its a flag in the flags object
-		if(arg.startsWith("--"))
-		{
-			// check if its a known flag (in flags object)
-			// set it if so
-			// otherwise fail
-			const flag = arg.slice(2);	// the flag name
-			if(Object.keys(flags).includes(flag)) flags[flag] = true;
-			else exit(`Unknown argument: ${arg}`);
-		}
-		// otherwise expect the token
-		else token = arg;
-	});
-
 	// login with supplied token
-	if(token) client.login(token);
-	else console.error("Please supply the login token!");
+	client.login(config.token).catch(e => {
+		console.error(e);
+		exit("\nDid you put your login token in config.js?");
+	});
 }
 
 // start
