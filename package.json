@@ -19,5 +19,8 @@
   "homepage": "https://github.com/dmg01/snippet-bot#readme",
   "devDependencies": {
     "discord.js": "^11.2.1"
+  },
+  "dependencies": {
+    "sqlite3": "^3.1.13"
   }
 }

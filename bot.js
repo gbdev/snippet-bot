@@ -1,20 +1,73 @@
-// TODO:
-// use regex to find lang strings in code blocks (in function `storeBlocks`)
+// things that'd be nice to clean up:
+// 	use regex to find lang strings in code blocks (in function `storeBlocks`)
+// 	make `insertRow` generic (insert varable num of values into varable table; no case analysis)
 
 // load discord.js and make a new client object
 const fs = require("fs");
+const sqlite3 = require("sqlite3");
 const Discord = require("discord.js");
 const client = new Discord.Client();
 
 // load config file
 const config = require("./config");
 
-// pastebin/etc domains
-const domains = ["pastebin.com"];
+// the sqlite database to be opened
+var database;
 
-// filenames
-const codeLogFilename = "code.log";	// where to store collected code blocks
-const pasteLogFilename = "urls.log";	// where to store pastebin/etc links
+// open the database and assert the existance of the tables
+// exit on failure
+function prepareDatabase()
+{
+	// load the database from file
+	database = new sqlite3.Database(config.dbFilename, e => {
+		if(e) exit(`Error opening database: ${e}`);
+	});
+
+	// make sure a table exists and die on failure to create it
+	function assertTable(table, columns)
+	{
+		database.run(`CREATE TABLE IF NOT EXISTS ${table}(${columns.join(", ")})`, e => {
+			if(e) exit(`Error creating table "${table}": ${e}`);
+		});
+	}
+
+	// assert the snippets and links tables
+	// (snippets table for code snippets)
+	// (links table for collected pastebin/etc urls)
+	assertTable("snippets", [id, timestamp, author, lang, code]);
+	assertTable("links", [id, timestamp, author, url]);
+};
+
+// close the database if its open
+function closeDatabase()
+{
+	// should we check if its actually open?
+	if(database) database.close();
+}
+
+// insert a row into a table
+// i hope we can rewrite this function better :p
+// should we die on failure to insert row or stay alive?
+function insertRow(table, values)
+{
+	// i'm not sure how to do this SQL more generically,
+	// to get rid of this case analysis
+	// someone help? :P
+	if(table === "snippets")
+	{
+		database.run(`INSERT INTO snippets(id, timestamp, author, lang, code) VALUES(?, ?, ?, ?, ?)`,
+			values, e => {
+				if(e) console.error(`Error inserting row: ${e}`);
+			});
+	}
+	else if(table === "links")
+	{
+		database.run(`INSERT INTO links(id, timestamp, author, url) VALUES(?, ?, ?, ?)`,
+			values, e => {
+				if(e) console.error(`Error inserting row: ${e}`);
+			});
+	}
+}
 
 // get the latest timestamp for a message object
 // that is, edited timestamp if its been edited
@@ -45,9 +98,9 @@ function storeBlocks(message, blockStrings)
 		else return { code: string, lang: null };
 	});
 
-	// format the log entries
-	const data = blocks.map(block => `${getLatestTimestamp(message)}\t${message.id}\t${message.author.tag}\t${block.lang}\t${tabNewlines(block.code)}`).join("\n");
-	appendFile(codeLogFilename, data);	// and store them
+	// insert code blocks into snippets table
+	blocks.forEach(block => insertRow("snippets",
+		[message.id, getLatestTimestamp(message), message.author.tag, block.lang, block.code]));
 }
 
 // store away pastebin/etc urls
@@ -55,15 +108,9 @@ function storeBlocks(message, blockStrings)
 // links = array of links
 function storeLinks(message, links)
 {
-	// format the log entries
-	const data = links.map(link => `${getLatestTimestamp(message)}\t${message.id}\t${message.author.tag}\t${link}`).join("\n");
-	appendFile(pasteLogFilename, data);	// and store them
-}
-
-// just append data to file called filename
-function appendFile(filename, data)
-{
-	fs.appendFile(filename, `${data}\n`, (e) => { if(e) throw e; });
+	// insert links into links table
+	links.forEach(link => insertRow("links",
+		[message.id, getLatestTimestamp(message), message.author.tag, link]));
 }
 
 // tab over newlines
@@ -110,7 +157,7 @@ function matchUrlWithDomain(string, domain)
 function getLinks(string)
 {
 	// match urls of all the domains in the `domains` array
-	return [].concat.apply([], domains.map(domain => matchUrlWithDomain(string, domain)));
+	return [].concat.apply([], config.domains.map(domain => matchUrlWithDomain(string, domain)));
 }
 
 // scan chat history and process all past messages
@@ -177,16 +224,19 @@ client.on("messageUpdate", (oldMessage, newMessage) => {
 function exit(message)
 {
 	console.error(message);
+	closeDatabase();
 	process.exit(1);
 }
 
 // start bot with token from config file
 function main()
 {
+	// first open the database
+	prepareDatabase();
+
 	// login with supplied token
 	client.login(config.token).catch(e => {
-		console.error(e);
-		exit("\nDid you put your login token in config.js?");
+		exit(`Error logging in: ${e}\nDid you put your login token in config.js?`);
 	});
 }
 
