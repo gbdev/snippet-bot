@@ -15,7 +15,7 @@ module.exports = config;
 config.domains = ["pastebin.com"];      // pastebin/etc domans
 config.dbFilename = "database.db";      // the database file to store the collection
 config.history = false;                 // archive chat history on login
-config.token = "MzY2Mjk4NDEyNDQzODkzNzYx.DPzAWQ.-7THWqTuB_UEPaeOanRUtYejhdI";   // discord login token
+config.token = "PUT YOUR TOKEN HERE";   // discord login token
 ```
 
 Run the bot with `npm start`.
