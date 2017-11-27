@@ -1,5 +1,5 @@
 // things that'd be nice to clean up:
-// 	use regex to find lang strings in code blocks (in function `storeBlocks`)
+//	make the history scanner also scan message revisions
 // 	make `insertRow` generic (insert varable num of values into varable table; no case analysis)
 
 // load discord.js and make a new client object
@@ -31,18 +31,15 @@ function prepareDatabase()
 		});
 	}
 
-	// assert the snippets and links tables
-	// (snippets table for code snippets)
-	// (links table for collected pastebin/etc urls)
-	assertTable("snippets", ["id", "timestamp", "author", "lang", "code"]);
-	assertTable("links", ["id", "timestamp", "author", "url"]);
+	// assert the tables in the db
+	assertTable("messages", ["id", "author"]);
+	assertTable("revisions", ["id", "timestamp", "content"]);
 };
 
 // close the database if its open
 function closeDatabase()
 {
-	// should we check if its actually open?
-	if(database) database.close();
+	if(database) database.close().catch(console.error);
 }
 
 // insert a row into a table
@@ -53,16 +50,16 @@ function insertRow(table, values)
 	// i'm not sure how to do this SQL more generically,
 	// to get rid of this case analysis
 	// someone help? :P
-	if(table === "snippets")
+	if(table === "messages")
 	{
-		database.run(`INSERT INTO snippets(id, timestamp, author, lang, code) VALUES(?, ?, ?, ?, ?)`,
+		database.run(`INSERT INTO messages(id, author) VALUES(?, ?)`,
 			values, e => {
 				if(e) console.error(`Error inserting row: ${e}`);
 			});
 	}
-	else if(table === "links")
+	else if(table === "revisions")
 	{
-		database.run(`INSERT INTO links(id, timestamp, author, url) VALUES(?, ?, ?, ?)`,
+		database.run(`INSERT INTO revisions(id, timestamp, content) VALUES(?, ?, ?)`,
 			values, e => {
 				if(e) console.error(`Error inserting row: ${e}`);
 			});
@@ -77,40 +74,16 @@ function getLatestTimestamp(message)
 	return message.editedTimestamp || message.createdTimestamp;
 }
 
-// store away collected code blocks
-// message = source discord message object
-// blockStrings = array of code block strings
-function storeBlocks(message, blockStrings)
+// create a new entry in the database for this message
+function createEntry(message)
 {
-	// create block objects from the block strings
-	// block.code = code string
-	// block.lang = language string, if present (otherwise null)
-	const blocks = blockStrings.map(string => {
-		// check if theres a language string
-		// do this in regex instead? instead of uglily hacking up strings manually haha
-		// if at least 3 lines (or 2nd line isnt empty), and first line is one word
-		// then the lang string is the first line
-		if((string.split("\n").length >= 3 ||
-		   (string.indexOf("\n") != -1 && string.split("\n")[1] != "")) &&
-		   string.split("\n")[0].split(" ").length == 1)
-			return { code: string.split("\n").slice(1).join("\n"),
-				 lang: string.split("\n")[0] };
-		else return { code: string, lang: null };
-	});
-
-	// insert code blocks into snippets table
-	blocks.forEach(block => insertRow("snippets",
-		[message.id, getLatestTimestamp(message), message.author.tag, block.lang, block.code]));
+	insertRow("messages", [message.id, message.author.tag]);
 }
 
-// store away pastebin/etc urls
-// message = source discord message object
-// links = array of links
-function storeLinks(message, links)
+// add a revision to a message in the database
+function storeRevision(message)
 {
-	// insert links into links table
-	links.forEach(link => insertRow("links",
-		[message.id, getLatestTimestamp(message), message.author.tag, link]));
+	insertRow("revisions", [message.id, getLatestTimestamp(message), message.content]);
 }
 
 // tab over newlines
@@ -160,6 +133,18 @@ function getLinks(string)
 	return [].concat.apply([], config.domains.map(domain => matchUrlWithDomain(string, domain)));
 }
 
+// does this string contain a code block?
+function containsCode(string)
+{
+	return getCodeBlocks(string).length;
+}
+
+// does this string contain a relevant url?
+function containsUrl(string)
+{
+	return getLinks(string).length;
+}
+
 // scan chat history and process all past messages
 function scanHistory()
 {
@@ -175,6 +160,7 @@ function scanHistory()
 // scan a text channel's history and process all messages
 function scanChannel(channel)
 {
+	// ADD SCANNING FOR MESSAGE UPDATES/EDITS
 	// i wonder how we should handle edits?
 	// fetch messages recursively and then process them
 	const limit = 100;	// how many to fetch at one time
@@ -192,13 +178,16 @@ function scanChannel(channel)
 }
 
 // process a discord message
-function processMessage(message)
+function processMessage(message, edit)
 {
-	const blocks = getCodeBlocks(message.content);	// get code blocks in message
-	const links = getLinks(message.content);	// collect pastebin/etc links
-	// store away the collected blocks and links (with person who posted them)
-	if(blocks.length) storeBlocks(message, blocks);
-	if(links.length) storeLinks(message, links);
+	// are we interested in this message?
+	if(containsCode(message.content) || containsUrl(message.content))
+	{
+		// if this is a newly created message and needs to be freshly added to the db
+		if(!edit) createEntry(message);
+		// then store this revision
+		storeRevision(message);
+	}
 }
 
 // when the bot logs in successfully
@@ -216,8 +205,8 @@ client.on("message", message => {
 
 // when a discord message is edited
 client.on("messageUpdate", (oldMessage, newMessage) => {
-	logMessage(newMessage, true);	// log the message to console
-	processMessage(newMessage);	// and process it normally
+	logMessage(newMessage, true);		// log the message to console
+	processMessage(newMessage, true);	// and process it normally
 });
 
 // exit with error message
