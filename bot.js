@@ -1,7 +1,3 @@
-// things that'd be nice to clean up:
-//	make the history scanner also scan message revisions
-// 	make `insertRow` generic (insert varable num of values into varable table; no case analysis)
-
 // load discord.js and make a new client object
 const fs = require("fs");
 const sqlite3 = require("sqlite3");
@@ -43,27 +39,14 @@ function closeDatabase()
 }
 
 // insert a row into a table
-// i hope we can rewrite this function better :p
 // should we die on failure to insert row or stay alive?
 function insertRow(table, values)
 {
-	// i'm not sure how to do this SQL more generically,
-	// to get rid of this case analysis
-	// someone help? :P
-	if(table === "messages")
-	{
-		database.run(`INSERT INTO messages(id, author) VALUES(?, ?)`,
-			values, e => {
-				if(e) console.error(`Error inserting row: ${e}`);
-			});
-	}
-	else if(table === "revisions")
-	{
-		database.run(`INSERT INTO revisions(id, timestamp, content) VALUES(?, ?, ?)`,
-			values, e => {
-				if(e) console.error(`Error inserting row: ${e}`);
-			});
-	}
+	// can this sql be done more prettily?
+	database.run(`INSERT INTO ${table} VALUES(${ new Array(values.length).fill("?").join(", ") })`,
+		(values, e) => {
+			if(e) console.error(`Error inserting row: ${e}`);
+		});
 }
 
 // get the latest timestamp for a message object
@@ -168,7 +151,7 @@ function scanChannel(channel)
 	function fetch(before)
 	{
 		channel.fetchMessages({ limit: limit, before: before }).then(messages => {
-			messages.forEach(processMessage);	// process each message normally
+			messages.forEach(processMessageEdits);	// process the revisions
 			// if there's still more to go, then fetch more and recurse!
 			if(messages.size == limit) fetch(messages.last().id);
 			else console.log(`Finished scanning channel #${channel.name}!`);
@@ -176,6 +159,15 @@ function scanChannel(channel)
 	};
 	console.log(`Scanning channel #${channel.name}...`);
 	fetch();
+}
+
+// process all the revisions of a message
+function processMessageEdits(message)
+{
+	const revisions = message.edits.reverse();	// reverse so original is first
+	processMessage(revisions[0]);			// process the original message
+	revisions.slice(1).forEach(message =>
+		processMessage(message, true));		// process edits
 }
 
 // process a discord message
