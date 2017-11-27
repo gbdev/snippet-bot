@@ -112,10 +112,11 @@ function logMessage(message, edit)
 // return an array of all the code blocks contained in a string
 function getCodeBlocks(string)
 {
-	// how to make it only collect whats in ( and ) ?
-	// so we don't have to explicitely chop off the code block delimiters?
 	const regex = /\`\`\`([a-z]*[\s\S]*?)\`\`\`/g;
-	return (string.match(regex) || []).map(s => s.slice(3, -3));
+	const result = [];
+	var matches;
+	while((matches = regex.exec(string)) !== null) result.push(matches[1]);
+	return result;
 }
 
 // return an array of links of some domain in a string
