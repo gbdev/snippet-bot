@@ -31,7 +31,7 @@ function prepareDatabase()
 	// should we care about which server it came from as well, for the sake of generality?
 	// even if it's only intended to be used on one server?
 	assertTable("Message", ["msgId", "channel", "author"]);
-	assertTable("Content", ["fullMessage", "codeSnippet", "date", "language", "associatedMsg"]);
+	assertTable("Content", ["fullMessage", "date", "associatedMsg"]);
 };
 
 // close the database if its open
@@ -80,20 +80,8 @@ function createEntry(message)
 // add a revision to a message in the database
 function storeRevision(message)
 {
-	// i'm not sure how we should handle multiple code snippets per message yet
-	// so for now i'll just add separate row per snippet
-	// (they are associated by timestamp)
-	// also i'm assuming "date" column should be a universal time stamp
-	// (but we can change it to a formatted date if that was the intention)
-	getCodeBlocks(message.content).forEach(block =>
-		insertRow("Content", [message.content, block.code,
-			getLatestTimestamp(message), block.lang, message.id]));
-
-	// i'm not sure what to do with urls at the moment,
-	// so i'll just stuff them in the same row for now
-	getLinks(message.content).forEach(link =>
-		insertRow("Content", [message.content, link,
-			getLatestTimestamp(message), null, message.id]));
+	// store this revision of the message
+	insertRow("Content", [message.content, getLatestTimestamp(message), message.id]);
 }
 
 // tab over newlines
