@@ -28,8 +28,10 @@ function prepareDatabase()
 	}
 
 	// assert the tables in the db
-	assertTable("messages", ["id", "author"]);
-	assertTable("revisions", ["id", "timestamp", "content"]);
+	// should we care about which server it came from as well, for the sake of generality?
+	// even if it's only intended to be used on one server?
+	assertTable("Message", ["msgId", "channel", "author"]);
+	assertTable("Content", ["fullMessage", "codeSnippet", "date", "language", "associatedMsg"]);
 };
 
 // close the database if its open
@@ -43,10 +45,10 @@ function closeDatabase()
 function insertRow(table, values)
 {
 	// can this sql be done more prettily?
-	database.run(`INSERT INTO ${table} VALUES(${ new Array(values.length).fill("?").join(", ") })`,
-		(values, e) => {
-			if(e) console.error(`Error inserting row: ${e}`);
-		});
+	const query = `INSERT INTO ${table} VALUES(${ new Array(values.length).fill("?").join(", ") })`;
+	database.run(query, values, e => {
+		if(e) console.error(`Error inserting row: ${e}`);
+	});
 }
 
 // get the latest timestamp for a message object
@@ -57,16 +59,41 @@ function getLatestTimestamp(message)
 	return message.editedTimestamp || message.createdTimestamp;
 }
 
+// get an appropriate name for a discord channel
+function getChannelName(channel)
+{
+	if(channel.type === "dm")
+		// or should channel name in this case be null?
+		return channel.recipient.tag;
+	else if(channel.type === "group")
+		return channel.name;
+	else if(channel.type === "text")
+		return `#${channel.name}`;
+}
+
 // create a new entry in the database for this message
 function createEntry(message)
 {
-	insertRow("messages", [message.id, message.author.tag]);
+	insertRow("Message", [message.id, getChannelName(message.channel), message.author.tag]);
 }
 
 // add a revision to a message in the database
 function storeRevision(message)
 {
-	insertRow("revisions", [message.id, getLatestTimestamp(message), message.content]);
+	// i'm not sure how we should handle multiple code snippets per message yet
+	// so for now i'll just add separate row per snippet
+	// (they are associated by timestamp)
+	// also i'm assuming "date" column should be a universal time stamp
+	// (but we can change it to a formatted date if that was the intention)
+	getCodeBlocks(message.content).forEach(block =>
+		insertRow("Content", [message.content, block.code,
+			getLatestTimestamp(message), block.lang, message.id]));
+
+	// i'm not sure what to do with urls at the moment,
+	// so i'll just stuff them in the same row for now
+	getLinks(message.content).forEach(link =>
+		insertRow("Content", [message.content, link,
+			getLatestTimestamp(message), null, message.id]));
 }
 
 // tab over newlines
@@ -93,12 +120,16 @@ function logMessage(message, edit)
 }
 
 // return an array of all the code blocks contained in a string
+// each object in the array has a "lang" property and a "code" property
 function getCodeBlocks(string)
 {
-	const regex = /\`\`\`([a-z]*[\s\S]*?)\`\`\`/g;
+	const regex = /\`\`\`(([a-z]+)\n)?\n*([\s\S]*?)\n*\`\`\`/g;
 	const result = [];
 	var matches;
-	while((matches = regex.exec(string)) !== null) result.push(matches[1]);
+	while((matches = regex.exec(string)) !== null) result.push({
+		lang: matches[2],
+		code: matches[3],
+	});
 	return result;
 }
 
