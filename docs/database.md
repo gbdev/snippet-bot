@@ -13,7 +13,7 @@ Content
 - `codeSnippet`
 - `date`
 - `language`
-- `associatedMsg`
+- `associatedMsg` -> Message.msgId
 
 
 Each instance of Content represent a revision of the posted message.

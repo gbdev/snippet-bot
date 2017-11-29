@@ -4,7 +4,8 @@
   "description": "A discord bot archiving code blocks and links to pastebin-like snippets.",
   "main": "bot.js",
   "scripts": {
-    "start": "node bot.js",
+    "bot": "node bot.js",
+    "server": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -21,6 +22,7 @@
     "discord.js": "^11.2.1"
   },
   "dependencies": {
+    "express": "^4.16.2",
     "sqlite3": "^3.1.13"
   }
 }
