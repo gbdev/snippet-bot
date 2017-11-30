@@ -15,6 +15,7 @@ module.exports = config;
 config.domains = ["pastebin.com"];      // pastebin/etc domans
 config.dbFilename = "database.db";      // the database file to store the collection
 config.history = false;                 // archive chat history on login
+config.port = 8080;                     // the port to server the http frontend on
 config.token = "PUT YOUR TOKEN HERE";   // discord login token
 ```
 
