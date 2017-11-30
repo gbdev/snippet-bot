@@ -36,7 +36,7 @@ function prepareDatabase()
 // close the database if its open
 function closeDatabase()
 {
-	if(database) database.close().catch(console.error);
+	if(database) database.close();//.catch(console.error);
 }
 
 // insert a row into a table
@@ -154,16 +154,20 @@ function scanHistory()
 	// and pass them to processMessage (the function right below)
 	console.log("Preparing to scan chat history...");
 
-	// for every text channel of every guild the bot is in...
-	client.guilds.forEach(guild => guild.channels
-		.filter(channel => channel.type === "text").forEach(scanChannel));
+	// get every text channel of every guild the bot is in...
+	const channels = [].concat.apply([], client.guilds.map(guild => guild.channels.array()
+		.filter(channel => channel.type === "text")));
+
+	// track how many channels there are to be scanned
+	channelsRemaining = channels.length;
+
+	// scan the channels!
+	channels.forEach(scanChannel);
 }
 
 // scan a text channel's history and process all messages
 function scanChannel(channel)
 {
-	// ADD SCANNING FOR MESSAGE UPDATES/EDITS
-	// i wonder how we should handle edits?
 	// fetch messages recursively and then process them
 	const limit = 100;	// how many to fetch at one time
 	function fetch(before)
@@ -172,7 +176,12 @@ function scanChannel(channel)
 			messages.forEach(processMessageEdits);	// process the revisions
 			// if there's still more to go, then fetch more and recurse!
 			if(messages.size == limit) fetch(messages.last().id);
-			else console.log(`Finished scanning channel #${channel.name}!`);
+			else
+			{
+				console.log(`Finished scanning channel #${channel.name}!`);
+				// if that's all of them, then quit!
+				if(--channelsRemaining == 0) quit("Scanning complete.");
+			}
 		}).catch(console.error);
 	};
 	console.log(`Scanning channel #${channel.name}...`);
@@ -205,20 +214,30 @@ function processMessage(message, edit)
 client.on("ready", () => {
 	console.log(`Logged in as ${client.user.tag}!`);
 	// if configured to archive chat history on login...
-	if(config.history) scanHistory();
+	if(config.parse) scanHistory();
 });
 
 // when a discord message is received
 client.on("message", message => {
+	if(config.parse) return;	// ignore if in parse mode
 	logMessage(message);		// log the message to console
 	processMessage(message);	// and process it normally
 });
 
 // when a discord message is edited
 client.on("messageUpdate", (oldMessage, newMessage) => {
+	if(config.parse) return;		// ignore if in parse mode
 	logMessage(newMessage, true);		// log the message to console
 	processMessage(newMessage, true);	// and process it normally
 });
+
+// quit the process peacefully with a message
+function quit(message)
+{
+	console.log(message);
+	closeDatabase();
+	process.exit(0);
+}
 
 // exit with error message
 function exit(message)
