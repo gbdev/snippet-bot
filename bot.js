@@ -1,5 +1,4 @@
 // load discord.js and make a new client object
-const fs = require("fs");
 const sqlite3 = require("sqlite3");
 const Discord = require("discord.js");
 const client = new Discord.Client();
@@ -59,6 +58,12 @@ function getLatestTimestamp(message)
 	return message.editedTimestamp || message.createdTimestamp;
 }
 
+// create a new entry in the database for this message
+function createEntry(message)
+{
+	insertRow("Message", [message.id, getChannelName(message.channel), message.author.tag]);
+}
+
 // get an appropriate name for a discord channel
 function getChannelName(channel)
 {
@@ -69,12 +74,6 @@ function getChannelName(channel)
 		return channel.name;
 	else if(channel.type === "text")
 		return `#${channel.name}`;
-}
-
-// create a new entry in the database for this message
-function createEntry(message)
-{
-	insertRow("Message", [message.id, getChannelName(message.channel), message.author.tag]);
 }
 
 // add a revision to a message in the database
