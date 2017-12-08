@@ -180,7 +180,9 @@ function scanChannel(channel)
 			{
 				console.log(`Finished scanning channel #${channel.name}!`);
 				// if that's all of them, then quit!
-				if(--channelsRemaining == 0) quit("Scanning complete.");
+				if(--channelsRemaining == 0)
+					if(config.oneshot) quit("Scanning complete.");
+					else console.log("Scanning complete.");
 			}
 		}).catch(console.error);
 	};
@@ -219,14 +221,14 @@ client.on("ready", () => {
 
 // when a discord message is received
 client.on("message", message => {
-	if(config.parse) return;	// ignore if in parse mode
+	if(config.parse && config.oneshot) return;	// ignore if in parse mode
 	logMessage(message);		// log the message to console
 	processMessage(message);	// and process it normally
 });
 
 // when a discord message is edited
 client.on("messageUpdate", (oldMessage, newMessage) => {
-	if(config.parse) return;		// ignore if in parse mode
+	if(config.parse && config.oneshot) return;	// ignore if in parse mode
 	logMessage(newMessage, true);		// log the message to console
 	processMessage(newMessage, true);	// and process it normally
 });
