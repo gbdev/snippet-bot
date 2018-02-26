@@ -34,28 +34,46 @@ function formatDate(timestamp)
 }
 
 // format a massege for code blocks
-function formatMessage(string)
+function formatMessage(string, keywords)
 {
-    const regex = /\`\`\`(([a-z]+)\n)?\n*([\s\S]*?)\n*\`\`\`/g;
-    const s = string.replace(regex, (match, p1, p2, p3, offset, string) =>
+    const regex = /\`\`\`(([a-zA-Z]+)\n)?\n*([\s\S]*?)\n*\`\`\`/g;
+    var s = string.replace(regex, (match, p1, p2, p3, offset, string) =>
 			     `<div class="code">${p2 ? `<span class="lang">#${p2}</span><br />` : ""}${p3.replace(/\n/g, "<br />")}</div>`);
-    // also parse inline `code` and urls
+    
+    const inlineRegex = /\`([^\`]+)\`/g;
+    s = s.replace(inlineRegex, (match, p1) => `<span class="inlineCode">${p1}</span>`);
+
+    const urlRegex = /(https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*))/g;
+    s = s.replace(urlRegex, (match, p1) => `<a href="${p1}">${p1}</a>`);
+    
+    keywords.filter(word => word.length).forEach(word => s = s.replace(new RegExp(word, "g"), `<span class="keyword">${word}</span>`));
     return s;
 }
 
 // make html output for a message
-function makeMessagePage(rows)
+function makeMessagePage(rows, keywords)
 {
     const body = rows.map(row => `
 <a class="perma" href="/code?msgId=${row.msgId}">permalink</a><br />
 Author: ${row.author}<br />
 Channel: ${row.channel}<br />` + row.revisions.map(revision => `
 <span class="timestamp">${formatDate(revision.date)}</span>
-<div class="messageBody">${formatMessage(revision.fullMessage)}</div>
+<div class="messageBody">${formatMessage(revision.fullMessage, keywords)}</div>
 	`).join("<br /><br />")).join("<br /><br />");
 
     return `
 <style>
+.inlineCode
+{
+	font-family: monospace;
+	color: #EEE;
+	background-color: #555;
+}
+.keyword
+{
+	background-color: yellow;
+	color: black;
+}
 .perma
 {
 	font-size: small;
@@ -119,6 +137,8 @@ frontend.get("/", (request, response) => {
 		{
 		    response.send(`
 <form action="/code/">
+<label for="keywords">Keywords</label>
+<input id="keywords" name="keywords"><br />
 <label for="author">Author</label>
 <select id="author" name="author">
 <option value="">*</option>
@@ -150,6 +170,11 @@ ${channels.map(channel => `<option value="${channel.channel}">${channel.channel}
 function strtotime(string)
 {
     return new Date(string).getTime();
+}
+
+function containsKeywords(string, keywords)
+{
+    return keywords.reduce((acc, word) => word === "" ? acc : acc && (string.indexOf(word) != -1), true);
 }
 
 // filter messages query
@@ -186,6 +211,7 @@ frontend.get("/code/", (request, response) => {
 		if(e) exit(`Error querying database: ${e}`);
 		else
 		{
+		    const keywords = request.query.keywords ? request.query.keywords.split(" ") : [];
 		    var rows = messageRows;
 		    rows = rows.map(row => {
 			row.revisions = contentRows
@@ -197,8 +223,10 @@ frontend.get("/code/", (request, response) => {
 			rows = rows.filter(row => row.revisions[0].date >= strtotime(request.query.from));
 		    if(request.query.to)
 			rows = rows.filter(row => row.revisions[0].date < strtotime(request.query.to));
+		    if(request.query.keywords)
+			rows = rows.filter(row => row.revisions.reduce((acc, revision) => containsKeywords(revision.fullMessage, keywords), true));
 		    if(request.query.as === "json") response.send(rows);
-		    else response.send(makeMessagePage(rows));
+		    else response.send(makeMessagePage(rows, keywords));
 		};
 	    });
 	};
