@@ -133,6 +133,11 @@ ${channels.map(channel => `<option value="${channel.channel}">${channel.channel}
 <input id="from" name="from" type="date"><br />
 <label for="to">To</label>
 <input id="to" name="to" type="date"><br />
+<label for="as">As</label>
+<select id="as" name="as">
+<option value="">Webpage</option>
+<option value="json">JSON</option>
+</select><br />
 <input type="submit">
 </form>
 `);
