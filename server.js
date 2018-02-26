@@ -46,7 +46,7 @@ function formatMessage(string, keywords)
     const urlRegex = /(https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*))/g;
     s = s.replace(urlRegex, (match, p1) => `<a href="${p1}">${p1}</a>`);
     
-    keywords.filter(word => word.length).forEach(word => s = s.replace(new RegExp(word, "g"), `<span class="keyword">${word}</span>`));
+    keywords.filter(word => word.length).forEach(word => s = s.replace(new RegExp(`(${word})`, "gi"), (match, p1) => `<span class="keyword">${p1}</span>`));
     return s;
 }
 
@@ -174,7 +174,7 @@ function strtotime(string)
 
 function containsKeywords(string, keywords)
 {
-    return keywords.reduce((acc, word) => word === "" ? acc : acc && (string.indexOf(word) != -1), true);
+    return keywords.reduce((acc, word) => word === "" ? acc : acc && (string.toLowerCase().indexOf(word.toLowerCase()) != -1), true);
 }
 
 // filter messages query
